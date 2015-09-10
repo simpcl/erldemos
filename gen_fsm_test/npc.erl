@@ -5,7 +5,7 @@
 %% API
 -export([start_link/0]).
  
--export([hero_join/0, hero_leave/0, hero_event/1, hero_sync_event/1]).
+-export([hero_join/0, hero_leave/0, hero_event/1, hero_sync_event/1, hero_sync_event/2]).
  
 %% gen_fsm callbacks
 -export([init/1, static/2, moving/2, handle_event/3,
@@ -16,7 +16,9 @@
 -record(npc, {state}).
  
 start_link() ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
+    Result = gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []),
+    io:format("start_link, Result:~p~n", [Result]),
+    Result.
 
 
 hero_join() ->
@@ -31,12 +33,16 @@ hero_event(Event) ->
 hero_sync_event(Event) ->
     gen_fsm:sync_send_all_state_event(?SERVER, Event).
 
-init([]) ->
-    io:format("init...~n"),
-    State = #npc{state = static},
-    io:format("init State: ~p~n", [State]),
-    {ok, static, State}.
+hero_sync_event(FsmRef, Event) ->
+    Result = gen_fsm:sync_send_all_state_event(FsmRef, Event),
+    io:format("hero_sync_event, Result:~p~n", [Result]),
+    Result.
 
+
+init([]) ->
+    State = #npc{state = static},
+    io:format("init, State: ~p~n", [State]),
+    {ok, static, State}.
  
 static(Event, State) ->
     case Event of
@@ -62,6 +68,8 @@ handle_event(Event, StateName, State) ->
  
 handle_sync_event(Event, From, StateName, State) ->
     io:format("handle_sync_event, Event:~p, From:~p, StateName:~p\n", [Event, From, StateName]),
+    gen_fsm:reply(From, {ok, <<"reply data">>}),
+    io:format("after gen_fsm:reply~n", []),
     Reply = ok,
     {reply, Reply, StateName, State}.
  
